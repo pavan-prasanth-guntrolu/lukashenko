@@ -38,6 +38,7 @@ const Supporters = lazy(() => import("@/pages/Supporters"));
 const Secret = lazy(() => import("@/pages/Secret"));
 const Ambassador = lazy(() => import("@/pages/Ambassador"));
 const GuestSpeaker = lazy(() => import("@/pages/GuestSpeaker"));
+const sendEmail = lazy(() => import("@/pages/api/sendEmail.js"));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -136,6 +137,7 @@ const App = () => {
                         <Route path="/hackathon" element={<Hackathon />} />
                         <Route path="/materials" element={<Materials />} />
                         <Route path="/secret14641" element={<Secret />} />
+                        <Route path="/api/sendEmail" element={<sendEmail />} />
                         <Route
                           path="/secret"
                           element={
