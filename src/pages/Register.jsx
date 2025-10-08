@@ -1,17 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { useSearchParams, useNavigate } from "react-router-dom";
-import emailjs from "emailjs-com";
-
-import {
-  CheckCircle,
-  User,
-  Mail,
-  Phone,
-  GraduationCap,
-  Building,
-  Lock,
-} from "lucide-react";
+import { CheckCircle, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -31,20 +21,80 @@ import { useAuth } from "@/components/AuthProvider";
 import groupQR from "/images/group-q.png";
 import secondQR from "/images/second-qr.jpg";
 
-// SMTP Email Configuration - Add your Gmail accounts here
-const SMTP_ACCOUNTS = [
-  {
-    email: "s210894@rguktsklm.ac.in",
-    password: "gctb jrtf ryac gtga", // 16-char Gmail app password
-  },
-].filter(
-  (acc) => acc.email && acc.password && acc.password !== "your-app-password-1"
-);
-
-let currentAccountIndex = 0;
-
 const WHATSAPP_GROUP_LINK =
   "https://chat.whatsapp.com/IOa3y2QZaaCI1JCHCOmZIP?mode=ems_qr_t";
+
+const countries = [
+  "India",
+  "United States",
+  "United Kingdom",
+  "Canada",
+  "Australia",
+  "Germany",
+  "France",
+  "Japan",
+  "China",
+  "Brazil",
+  "South Africa",
+  "Singapore",
+  "United Arab Emirates",
+  "Italy",
+  "Mexico",
+  "Russia",
+  "South Korea",
+  "Netherlands",
+  "Switzerland",
+  "Sweden",
+  "New Zealand",
+  "Indonesia",
+  "Malaysia",
+  "Philippines",
+  "Thailand",
+  "Bangladesh",
+  "Pakistan",
+  "Nepal",
+  "Sri Lanka",
+  "Other",
+];
+
+const indianStates = [
+  "Andhra Pradesh",
+  "Arunachal Pradesh",
+  "Assam",
+  "Bihar",
+  "Chhattisgarh",
+  "Goa",
+  "Gujarat",
+  "Haryana",
+  "Himachal Pradesh",
+  "Jharkhand",
+  "Karnataka",
+  "Kerala",
+  "Madhya Pradesh",
+  "Maharashtra",
+  "Manipur",
+  "Meghalaya",
+  "Mizoram",
+  "Nagaland",
+  "Odisha",
+  "Punjab",
+  "Rajasthan",
+  "Sikkim",
+  "Tamil Nadu",
+  "Telangana",
+  "Tripura",
+  "Uttar Pradesh",
+  "Uttarakhand",
+  "West Bengal",
+  "Andaman and Nicobar Islands",
+  "Chandigarh",
+  "Dadra and Nagar Haveli and Daman and Diu",
+  "Delhi",
+  "Jammu and Kashmir",
+  "Ladakh",
+  "Lakshadweep",
+  "Puducherry",
+];
 
 const Register = () => {
   const [formData, setFormData] = useState({
@@ -60,10 +110,15 @@ const Register = () => {
     attendanceMode: "",
     agreeTerms: false,
     agreeUpdates: false,
+    country: "",
+    state: "",
+    gender: "",
   });
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
   const [alreadyRegistered, setAlreadyRegistered] = useState(false);
+
   const { toast } = useToast();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
@@ -113,7 +168,11 @@ const Register = () => {
       "year",
       "branch",
       "attendanceMode",
+      "country",
+      "gender",
     ];
+    if (formData.country === "India") requiredFields.push("state");
+
     const missingFields = requiredFields.filter((f) => !formData[f]);
     if (missingFields.length > 0) {
       toast({
@@ -134,32 +193,16 @@ const Register = () => {
     return true;
   };
 
-  // Function to send confirmation email
-
-  const sendEmail = async (fullName, email) => {
-    try {
-      await fetch("/api/sendEmail", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName, email }),
-      });
-      console.log("✅ Email sent successfully");
-    } catch (err) {
-      console.error("❌ Failed to send email:", err);
-    }
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!validateForm()) return;
-
     setIsSubmitting(true);
+
     try {
       if (!user) return;
 
       const referralCode = btoa(user.id).substring(0, 8);
       let referredBy = null;
-
       if (formData.referralCode) {
         const { data: referrer } = await supabase
           .from("registrations")
@@ -183,19 +226,18 @@ const Register = () => {
           referral_code: referralCode,
           referred_by: referredBy,
           attendance_mode: formData.attendanceMode,
+          country: formData.country,
+          state: formData.state,
+          gender: formData.gender, // ✅ Added gender here
         },
       ]);
 
       if (error) throw error;
 
-      // Send confirmation email asynchronously (won't block user)
-      sendEmail(formData.fullName, formData.email);
-
       setIsSubmitted(true);
       toast({
         title: "Registration Successful!",
-        description:
-          "You have registered for Qiskit Fall Fest 🎉 Check your email!",
+        description: "You have registered for Qiskit Fall Fest 🎉",
       });
     } catch (err) {
       console.error(err);
@@ -209,20 +251,20 @@ const Register = () => {
     }
   };
 
-  // --- Render Pages ---
+  // --- Render States ---
   if (!user) {
     return (
       <motion.div className="min-h-screen flex items-center justify-center bg-background px-4">
-        <motion.div className="max-w-md w-full text-center">
-          <motion.div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <div className="max-w-md w-full text-center">
+          <div className="w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <Lock className="h-10 w-10 text-blue-600" />
-          </motion.div>
+          </div>
           <h1 className="text-2xl font-bold mb-4">Sign In Required</h1>
           <p className="mb-6">
             Please sign in to access the registration form.
           </p>
           <Button onClick={() => navigate("/login")}>Go to Login</Button>
-        </motion.div>
+        </div>
       </motion.div>
     );
   }
@@ -230,10 +272,10 @@ const Register = () => {
   if (alreadyRegistered || isSubmitted) {
     return (
       <motion.div className="min-h-screen flex items-center justify-center bg-background px-4">
-        <motion.div className="max-w-md w-full text-center">
-          <motion.div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
+        <div className="max-w-md w-full text-center">
+          <div className="w-20 h-20 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="h-10 w-10 text-green-600" />
-          </motion.div>
+          </div>
           <h1 className="text-2xl font-bold mb-4">Registration Successful!</h1>
           <p className="mb-6">
             Thanks for registering! Join our WhatsApp group:
@@ -256,7 +298,7 @@ const Register = () => {
           >
             Join WhatsApp Group
           </Button>
-        </motion.div>
+        </div>
       </motion.div>
     );
   }
@@ -264,7 +306,7 @@ const Register = () => {
   return (
     <motion.div className="min-h-screen bg-background py-20">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
-        <motion.div className="max-w-2xl mx-auto">
+        <div className="max-w-2xl mx-auto">
           <div className="text-center mb-12">
             <h1 className="text-4xl font-bold mb-4">
               Register for Qiskit Fall Fest 2025
@@ -274,6 +316,7 @@ const Register = () => {
               celebration
             </p>
           </div>
+
           <Card className="glass-card border border-white/10">
             <CardHeader>
               <CardTitle className="text-2xl font-semibold">
@@ -306,6 +349,7 @@ const Register = () => {
                     />
                   </div>
                 </div>
+
                 <div>
                   <Label htmlFor="phone">Phone Number *</Label>
                   <Input
@@ -316,18 +360,76 @@ const Register = () => {
                     required
                   />
                 </div>
-                <div>
-                  <Label htmlFor="referralCode">Referral Code (Optional)</Label>
-                  <Input
-                    id="referralCode"
-                    value={formData.referralCode}
-                    onChange={(e) =>
-                      handleInputChange("referralCode", e.target.value)
-                    }
-                    placeholder="Enter referral code if you have one"
-                  />
+
+                {/* Country and State */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <Label htmlFor="country">Country *</Label>
+                    <Select
+                      value={formData.country}
+                      onValueChange={(value) => {
+                        handleInputChange("country", value);
+                        if (value !== "India") handleInputChange("state", "");
+                      }}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select country" />
+                      </SelectTrigger>
+                      <SelectContent className="max-h-60 overflow-y-auto">
+                        {countries.map((country) => (
+                          <SelectItem key={country} value={country}>
+                            {country}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  {formData.country === "India" && (
+                    <div>
+                      <Label htmlFor="state">State *</Label>
+                      <Select
+                        value={formData.state}
+                        onValueChange={(value) =>
+                          handleInputChange("state", value)
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select state" />
+                        </SelectTrigger>
+                        <SelectContent className="max-h-60 overflow-y-auto">
+                          {indianStates.map((state) => (
+                            <SelectItem key={state} value={state}>
+                              {state}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
                 </div>
-                {/* Academic Info */}
+
+                {/* Gender */}
+                <div>
+                  <Label htmlFor="gender">Gender *</Label>
+                  <Select
+                    value={formData.gender}
+                    onValueChange={(value) =>
+                      handleInputChange("gender", value)
+                    }
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select gender" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="male">Male</SelectItem>
+                      <SelectItem value="female">Female</SelectItem>
+                      <SelectItem value="other">Other</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Institution */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="institution">Institution *</Label>
@@ -337,7 +439,7 @@ const Register = () => {
                       onChange={(e) =>
                         handleInputChange("institution", e.target.value)
                       }
-                      placeholder="Your college/university name"
+                      placeholder="Your college/university"
                       required
                     />
                   </div>
@@ -353,12 +455,19 @@ const Register = () => {
                         <SelectValue placeholder="Select year" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="E1">E1</SelectItem>
-                        <SelectItem value="E2">E2</SelectItem>
+                        <SelectItem value="1st-year">1st-year</SelectItem>
+                        <SelectItem value="2nd-year">2nd-year</SelectItem>
+                        <SelectItem value="3rd-year">3rd-year</SelectItem>
+                        <SelectItem value="4th-year">4th-year</SelectItem>
+                        <SelectItem value="faculty">Faculty</SelectItem>
+                        <SelectItem value="masters">Masters</SelectItem>
+                        <SelectItem value="phd">PhD</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                 </div>
+
+                {/* Branch and Mode */}
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="branch">Branch/Major *</Label>
@@ -368,7 +477,7 @@ const Register = () => {
                       onChange={(e) =>
                         handleInputChange("branch", e.target.value)
                       }
-                      placeholder="e.g., Computer Science, Physics"
+                      placeholder="e.g., CSE, Physics"
                       required
                     />
                   </div>
@@ -381,7 +490,7 @@ const Register = () => {
                       }
                     >
                       <SelectTrigger>
-                        <SelectValue placeholder="Select attendance mode" />
+                        <SelectValue placeholder="Select mode" />
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="in-person">In-Person</SelectItem>
@@ -390,7 +499,8 @@ const Register = () => {
                     </Select>
                   </div>
                 </div>
-                {/* Background */}
+
+                {/* Experience */}
                 <div>
                   <Label htmlFor="experience">
                     Quantum Computing Experience
@@ -402,7 +512,7 @@ const Register = () => {
                     }
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select your experience level" />
+                      <SelectValue placeholder="Select experience level" />
                     </SelectTrigger>
                     <SelectContent>
                       <SelectItem value="none">No prior experience</SelectItem>
@@ -412,6 +522,8 @@ const Register = () => {
                     </SelectContent>
                   </Select>
                 </div>
+
+                {/* Motivation */}
                 <div>
                   <Label htmlFor="motivation">
                     Why do you want to attend? (Optional)
@@ -426,7 +538,8 @@ const Register = () => {
                     rows={3}
                   />
                 </div>
-                {/* Terms & Updates */}
+
+                {/* Terms */}
                 <div className="space-y-4 border-t border-border pt-4">
                   <div className="flex items-start space-x-2">
                     <Checkbox
@@ -436,19 +549,21 @@ const Register = () => {
                         handleInputChange("agreeTerms", checked)
                       }
                     />
-                    <div className="text-sm">
-                      <Label htmlFor="agreeTerms" className="cursor-pointer">
-                        I agree to the{" "}
-                        <a
-                          href="/code-of-conduct"
-                          className="text-primary hover:underline"
-                        >
-                          Code of Conduct
-                        </a>{" "}
-                        and event terms and conditions. *
-                      </Label>
-                    </div>
+                    <Label
+                      htmlFor="agreeTerms"
+                      className="text-sm cursor-pointer"
+                    >
+                      I agree to the{" "}
+                      <a
+                        href="/code-of-conduct"
+                        className="text-primary hover:underline"
+                      >
+                        Code of Conduct
+                      </a>{" "}
+                      and event terms and conditions. *
+                    </Label>
                   </div>
+
                   <div className="flex items-start space-x-2">
                     <Checkbox
                       id="agreeUpdates"
@@ -457,40 +572,27 @@ const Register = () => {
                         handleInputChange("agreeUpdates", checked)
                       }
                     />
-                    <div className="text-sm">
-                      <Label htmlFor="agreeUpdates" className="cursor-pointer">
-                        I would like to receive updates about future quantum
-                        events.
-                      </Label>
-                    </div>
+                    <Label
+                      htmlFor="agreeUpdates"
+                      className="text-sm cursor-pointer"
+                    >
+                      I would like to receive updates about future quantum
+                      events.
+                    </Label>
                   </div>
                 </div>
-                {/* Submit Button */}
+
                 <Button
                   type="submit"
-                  className="w-full btn-quantum py-3 text-lg font-semibold rounded-lg shadow-lg relative group animate-pulse-glow"
+                  className="w-full btn-quantum py-3 text-lg font-semibold rounded-lg shadow-lg"
                   disabled={isSubmitting}
                 >
-                  <span className="relative z-10">
-                    {isSubmitting ? "Registering..." : "Complete Registration"}
-                  </span>
+                  {isSubmitting ? "Registering..." : "Complete Registration"}
                 </Button>
-                {/* Already Registered */}
-                <div className="text-center text-sm text-muted-foreground">
-                  Already registered?{" "}
-                  <a
-                    href={WHATSAPP_GROUP_LINK}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline flex items-center justify-center gap-1"
-                  >
-                    Join WhatsApp Group
-                  </a>
-                </div>
               </form>
             </CardContent>
           </Card>
-        </motion.div>
+        </div>
       </div>
     </motion.div>
   );
